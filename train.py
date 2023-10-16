@@ -30,6 +30,7 @@ def parse_option():
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--predict", action="store_true")
     parser.add_argument("--seed", type=int, default=114514)
+    parser.add_argument("--threshold", type=float, default=0.6)
 
     return parser.parse_args()
 
@@ -257,7 +258,7 @@ def validation(model, criterion, dataloader, device, tracker):
         tracker.val_acc.append(running_acc / size)
 
 
-def prediction(model, dataset, device, transform, car):
+def prediction(model, dataset, device, transform, car, th):
     pred_list = []
     model.eval()
 
@@ -274,9 +275,9 @@ def prediction(model, dataset, device, transform, car):
                     prob = F.softmax(logit, dim=1)
 
                     pred_list.append(logit.argmax().item())
-                    if prob[0][1] >= 0.6:
+                    if prob[0][1] >= th:
                         writer.writerow([os.path.split(dataset.img_pathes[idx])[1]])
-                    elif 0.4 < prob[0][1] and prob[0][1] < 0.7:
+                    elif 1 - th < prob[0][1] and prob[0][1] < th:
                         d_witer.writerow([dataset.img_pathes[idx], prob[0][1].item()])
     print(
         classification_report(
@@ -395,6 +396,7 @@ def main():
             device=device,
             transform=val_trans,
             car=args.car,
+            th=threshold,
         )
 
 
