@@ -26,9 +26,9 @@ def parse_option():
     parser.add_argument("--n_fold", type=int, default=8)
     parser.add_argument("--model_name", type=str, default="efficientnetv2_rw_s")
     parser.add_argument("--car", type=str, default="4runner")
-    parser.add_argument("--mode", type=str, default="train")
     parser.add_argument("--path", type=str, default="model_wts.pth")
     parser.add_argument("--train", action="store_true")
+    parser.add_argument("--predict", action="store_true")
     parser.add_argument("--seed", type=int, default=114514)
 
     return parser.parse_args()
@@ -259,6 +259,7 @@ def validation(model, criterion, dataloader, device, tracker):
 
 def prediction(model, dataset, device, transform, car):
     pred_list = []
+    model.eval()
 
     with torch.no_grad():
         with open(f"{car}.csv", "a", newline="") as f:
@@ -273,9 +274,9 @@ def prediction(model, dataset, device, transform, car):
                     prob = F.softmax(logit, dim=1)
 
                     pred_list.append(logit.argmax().item())
-                    if prob[0][1] >= 0.7:
+                    if prob[0][1] >= 0.6:
                         writer.writerow([os.path.split(dataset.img_pathes[idx])[1]])
-                    elif 0.3 < prob[0][1] and prob[0][1] < 0.7:
+                    elif 0.4 < prob[0][1] and prob[0][1] < 0.7:
                         d_witer.writerow([dataset.img_pathes[idx], prob[0][1].item()])
     print(
         classification_report(
@@ -383,13 +384,18 @@ def main():
         )
         torch.save(model.state_dict(), args.path)
         print(f"Model is saved as '{args.path}'")
-    else:
+
+    if args.predict:
         model.load_state_dict(torch.load(args.path))
         print(f"Model is loaded from '{args.path}'")
 
-    prediction(
-        model=model, dataset=dataset, device=device, transform=val_trans, car=args.car
-    )
+        prediction(
+            model=model,
+            dataset=dataset,
+            device=device,
+            transform=val_trans,
+            car=args.car,
+        )
 
 
 if __name__ == "__main__":
